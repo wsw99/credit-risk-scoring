@@ -1,0 +1,24 @@
+# Explainable AI configuration
+
+shap:
+  method: "tree"  # tree, kernel, deep
+  max_display: 20
+  summary_plot_type: "dot"  # dot, bar, violin
+
+lime:
+  num_features: 10
+  num_samples: 5000
+  kernel_width: null
+
+dice:
+  num_counterfactuals: 3
+  desired_class: 0  # 0 = fully paid (approved)
+  features_to_vary: "all"
+
+evaluation:
+  faithfulness:
+    perturbation_ratio: 0.1
+    n_repeats: 10
+  stability:
+    n_samples: 100
+    threshold: 0.05

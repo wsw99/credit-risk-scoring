@@ -1,0 +1,40 @@
+# Data configuration
+
+dataset:
+  primary: lendingclub
+  advanced: home_credit
+  quick_validation: give_me_some_credit
+
+# Temporal split (LendingClub)
+split:
+  train: [2007, 2014]  # all fully matured loans
+  val: [2015]
+  test: [2016]
+
+# Label definition
+label:
+  target_col: loan_status
+  positive_class: Charged Off
+  negative_class: Fully Paid
+  exclude_in_progress: true
+
+# Missingness thresholds
+missingness:
+  drop_above_pct: 80
+  flag_between_pct: [20, 80]
+
+# Leakage prevention: features only observable post-issuance
+leaky_features:
+  - recoveries
+  - collection_recovery_fee
+  - total_rec_prncp
+  - total_rec_int
+  - total_rec_late_fee
+  - last_pymnt_d
+  - last_pymnt_amnt
+  - next_pymnt_d
+  - out_prncp
+  - out_prncp_inv
+  - total_pymnt
+  - total_pymnt_inv
+  - total_rec_prncp

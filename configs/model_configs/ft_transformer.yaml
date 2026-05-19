@@ -1,0 +1,30 @@
+# FT-Transformer configuration
+
+model: ft_transformer
+
+training:
+  batch_size: 512
+  max_epochs: 200
+  patience: 20
+  lr_scheduler: "cosine"
+  optimizer: "adamw"
+  weight_decay: 0.01
+
+hyperparameter_space:
+  learning_rate:
+    type: float
+    low: 0.0001
+    high: 0.01
+    log: true
+  n_blocks:
+    type: int
+    low: 2
+    high: 6
+  d_token:
+    type: int
+    low: 64
+    high: 256
+  attention_dropout:
+    type: float
+    low: 0.0
+    high: 0.3

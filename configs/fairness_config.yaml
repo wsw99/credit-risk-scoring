@@ -1,0 +1,39 @@
+# Fairness audit configuration
+
+protected_attributes:
+  - gender
+  - age_band
+  - income_band
+  - region
+
+age_bands:
+  - [18, 25]
+  - [26, 35]
+  - [36, 50]
+  - [51, 65]
+  - [66, 120]
+
+income_bands:
+  - [0, 30000]
+  - [30001, 60000]
+  - [60001, 100000]
+  - [100001, 200000]
+  - [200001, 999999999]
+
+metrics:
+  - demographic_parity_difference
+  - equal_opportunity_difference
+  - equalized_odds_difference
+  - disparate_impact_ratio
+
+thresholds:
+  dpd_warning: 0.1
+  eod_warning: 0.1
+  dir_violation: 0.8  # US EEOC 80% rule
+
+mitigation:
+  methods:
+    - reweighing
+    - adversarial_debiasing
+    - threshold_optimizer
+  evaluate_tradeoff: true

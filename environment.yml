@@ -1,0 +1,42 @@
+name: credit-risk-scoring
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - scikit-learn
+  - scipy
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - pytest
+  - pyyaml
+  - pip:
+      - xgboost
+      - lightgbm
+      - catboost
+      - optbinning
+      - feature-engine
+      - category_encoders
+      - shap
+      - lime
+      - dice-ml
+      - interpret
+      - fairlearn
+      - aif360
+      - torch>=2.0
+      - pytorch-tabular
+      - transformers
+      - accelerate
+      - bitsandbytes
+      - gradio
+      - mlflow
+      - optuna
+      - onnx
+      - onnxruntime
+      - langchain
+      - llama-index

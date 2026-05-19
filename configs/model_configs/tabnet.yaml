@@ -1,0 +1,37 @@
+# TabNet configuration
+
+model: tabnet
+
+training:
+  batch_size: 2048
+  max_epochs: 200
+  patience: 20
+  lr_scheduler: "cosine"
+  optimizer: "adam"
+
+hyperparameter_space:
+  learning_rate:
+    type: float
+    low: 0.001
+    high: 0.1
+    log: true
+  n_d:
+    type: int
+    low: 8
+    high: 64
+  n_a:
+    type: int
+    low: 8
+    high: 64
+  n_steps:
+    type: int
+    low: 3
+    high: 10
+  gamma:
+    type: float
+    low: 1.0
+    high: 2.0
+  lambda_sparse:
+    type: float
+    low: 0.0
+    high: 0.001
