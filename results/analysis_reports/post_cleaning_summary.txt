@@ -1,0 +1,20 @@
+========================================
+  POST-CLEANING DATA SUMMARY
+========================================
+Rows: 1,345,350
+Columns: 92 (removed 62)
+
+Temporal split:
+  Train (2014-2016): 891,754 (66.3%) bad_rate=20.77%
+  Val (2017):        169,321 (12.6%) bad_rate=23.13%
+  Test (2018):       56,318 (4.2%) bad_rate=15.76%
+
+Top 5 features (univariate AUC):
+  int_rate: 0.6944
+  fico_range_low: 0.5896
+  fico_range_high: 0.5896
+  acc_open_past_24mths: 0.5809
+  dti: 0.5794
+
+Risks: addr_state=location proxy, survivorship bias, moderate missing in some features
+========================================

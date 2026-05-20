@@ -13,9 +13,10 @@ End-to-end personal loan default prediction system with **XAI**, **fairness audi
 
 ## Benchmark
 
-| Model | Test AUC | Split Method |
-|---|---|---|
-| Logistic Regression | 0.714 | Temporal (2007-2014 / 2015 / 2016) |
+| Model | Test AUC | Test KS | Features | Split Method |
+|---|---|---|---|---|
+| Logistic Regression (Raw) | 0.714 | — | 89 | Temporal (2007-2014 / 2015 / 2016) |
+| WOE Scorecard (Stage 2) | 0.705 | 0.296 | 31 | Temporal (2007-2014 / 2015 / 2016) |
 
 ## Setup
 
@@ -30,4 +31,4 @@ conda activate credit-risk-scoring
 
 ## Reports
 
-See `results/analysis_reports/` for EDA charts and [data analysis report](results/analysis_reports/data_analysis_report.md).
+See `results/analysis_reports/` for EDA charts, [data analysis report](results/analysis_reports/data_analysis_report.md), and Stage 2 scorecard table.

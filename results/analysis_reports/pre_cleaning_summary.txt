@@ -1,0 +1,25 @@
+========================================
+  PRE-CLEANING DATA SUMMARY
+========================================
+Rows:               2,260,701
+Columns:            152
+Date range:         Apr-2008 -> Sep-2018
+Target categories:  9
+
+Target breakdown:
+  Fully Paid:       1,076,751 (47.6%)
+  Charged Off:      268,559 (11.9%)
+  Current:          878,317 (38.9%)
+  Late (31-120):    21,467 (0.9%)
+
+Missingness:
+  Drop (>80%):      39 columns
+  Flag (20-80%):    19 columns
+  Keep (<20%):      94 columns
+
+Key risks:
+  - 38.9% of loans are 'Current' (no final outcome), must be excluded
+  - ~36 hardship/settlement features are near-100% missing or post-issuance
+  - Joint-application features ~95% missing
+  - member_id is 100% missing (useless)
+========================================
