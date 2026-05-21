@@ -68,20 +68,30 @@
 
 ## 3. 数据清洗
 
-### 3.1 移除的特征（共 62 个）
+### 3.1 清洗流水线
 
-| 类别 | 数量 | 原因 | 示例 |
-|---|---|---|---|
-| 高缺失率 (>80%) | 38 | 信息量不足，无法可靠填补 | `hardship_*` (99%), `sec_app_*` (95%), `annual_inc_joint` (95%) |
-| 数据泄露 | 17 | 贷款发放后才可观测 | `total_pymnt`, `recoveries`, `last_pymnt_amnt`, `settlement_*` |
-| 非特征列 | 7 | ID、URL、自由文本 | `id`, `member_id`, `url`, `desc`, `emp_title`, `title` |
+数据清洗分两阶段：**全局清洗**（在完整数据集上）和 **逐 split 清洗**（切分后对每个 train/val/test 独立检查）。
+
+| 步骤 | 阶段 | 方法 | 移除 | 原因 |
+|---|---|---|---|---|
+| 1. 标签定义 | 全局 | 仅保留 Fully Paid / Charged Off / Default | 879K 行 | 排除 Current/Late/Grace 等无最终结果的贷款 |
+| 2. ID/制品列 | 全局 | 按列名删除 | 7 列 | `id`, `member_id`, `url`, `desc`, `emp_title`, `title`, `zip_code` |
+| 3. 高缺失率 | 全局 | NaN 率 > 80%（在完整数据上） | 38 列 | `hardship_*`, `sec_app_*`, `annual_inc_joint` 等 |
+| 4. 数据泄露 | 全局 | 贷款发放后才可观测 | 31 列 | `total_pymnt`, `recoveries`, `last_pymnt_*`, `settlement_*` 等 |
+| 5. 时间切分 | 全局 | 按 issue_d 切分为 Train(2007-2014) / Val(2015) / Test(2016) | — | 严格 Out-of-Time Split |
+| 6. 逐 split 清洗 | 每 split | NaN 率 ≥ 80% **或** 常数率 ≥ 99% 在任一 split 中 | 14 NaN + 9 常数 | `open_acc_6m` 等 LendingClub 2015+ 新增字段；`pymnt_plan` 等近常数列 |
+
+> **步骤 6 的设计动机**：全局 80% 阈值会漏掉在 train 中 100% 为 NaN 但 val/test 中有值的特征（因为全局 NaN 率 ≈ 40%，远低于 80%）。这些特征在全局检查中"合法存活"，但在 train 中无法提供任何信号。逐 split 检查独立评估每个数据集，确保 train/val/test 中的特征质量一致。
+
+**总计**：原始 151 列 → 全局清洗后 92 列 → 逐 split 清洗后 **68 列**（65 特征 + `is_bad` + `issue_d` + `loan_status`）。
 
 ### 3.2 清洗后数据
 
 | 指标 | 值 |
 |---|---|
 | 有效贷款笔数 | 1,119,711 |
-| 保留特征数 | **92** (89 + 目标列 + 时间列) |
+| 总列数 | 68 |
+| 可用特征数 | 65（55 数值 + 10 分类） |
 | 总体违约率 | 19.92% |
 
 ---
@@ -127,29 +137,30 @@ Test:  2016年        (1年，293,105笔)
 
 ## 4. 基准模型结果 (Benchmark)
 
-### 4.1 Logistic Regression
+### 4.1 Logistic Regression（62 特征，排除 grade/sub_grade 以与 Stage 2 对齐）
 
 | C | Train AUC | Val AUC | Test AUC |
 |---|---|---|---|
-| 0.01 | 0.7069 | 0.7358 | 0.7139 |
-| 0.10 | 0.7069 | 0.7358 | 0.7139 |
-| 1.00 | 0.7069 | 0.7358 | 0.7139 |
-| 10.00 | 0.7069 | 0.7358 | 0.7139 |
+| 0.01 | 0.7031 | 0.7336 | 0.7108 |
+| 0.10 | 0.7031 | 0.7336 | 0.7108 |
+| 1.00 | 0.7031 | 0.7336 | 0.7108 |
+| 10.00 | 0.7031 | 0.7336 | 0.7108 |
 
-> C 参数对结果几乎无影响，说明 L2 正则化在此特征规模下饱和。
+> C 参数对结果几乎无影响，说明 L2 正则化在此特征规模下饱和。排除 grade/sub_grade 是为了与 Stage 2 评分卡做公平对比（Stage 2 不使用 LendingClub 内部评级）。
 
-**测试集基准: AUC = 0.7140**
+**测试集基准: AUC = 0.7108, KS = 0.307**
 
 ### 4.2 与社区结果对比
 
 | 来源 | 切分方式 | LR AUC | XGBoost AUC |
 |---|---|---|---|
-| **本项目** | 时间切分 2007-2014/2015/2016 | **0.714** | 待跑 |
+| **本项目 Stage 1** | 时间切分 2007-2014/2015/2016 | **0.711** | 待跑 |
+| 本项目 Stage 2 | 时间切分, WOE 编码 | **0.704** | — |
 | [sjagannathan17](https://github.com/sjagannathan17/Lending-Club-ML-Analysis) | 10-fold 随机 CV | 0.78 | **0.80** |
 | [chetan7659](https://github.com/chetan7659/Financial-Risk-Intelligence-System-Loan-Default-Prediction-) | 未详述 | 0.72 | 0.73 |
 | 文献一般范围 | 随机切分 | 0.68-0.72 | 0.73-0.78 |
 
-本项目 LR 0.714 处于时间切分的合理范围内。**后续 XGBoost/LightGBM 的目标是将 Test AUC 从 0.714 提升到 0.73-0.75。**
+本项目 LR 0.711 处于时间切分的合理范围内。**后续 XGBoost/LightGBM 的目标是将 Test AUC 从 0.711 提升到 0.73-0.75。**
 
 ---
 
@@ -157,7 +168,7 @@ Test:  2016年        (1年，293,105笔)
 
 ### 5.1 数据特征
 
-- **Top 5 最有预测力的单特征**: `int_rate` (AUC 0.694), `fico_range_low` (0.590), `acc_open_past_24mths` (0.581), `dti` (0.579), `revol_util` (0.577)
+- **Top 5 最有预测力的单特征**: `int_rate` (AUC 0.673), `fico_range_low` (0.588), `fico_range_high` (0.588), `acc_open_past_24mths` (0.569), `dti` (0.569)
 - `grade` 和 `sub_grade` 是 LendingClub 自己的内部评级，预测力很强但在真实银行场景中不可用（相当于用了别人的模型输出做特征）
 - 多个特征高度相关（如 `fico_range_low` ↔ `fico_range_high` 相关系数 1.0），需要去重或在模型中选择一个
 
@@ -174,7 +185,7 @@ Test:  2016年        (1年，293,105笔)
 
 ## 6. 下一步
 
-- **Stage 2**: 经典银行评分卡（WOE 编码 + 逻辑回归） — 对标监管要求
+- **Stage 2**: 经典银行评分卡（WOE 编码 + 逻辑回归） — 对标监管要求，AUC 0.704
 - **Stage 3**: XGBoost / LightGBM / CatBoost + Optuna 调参 — 性能基准
 - **目标**: Test AUC 达到 0.73-0.75，KS 达到 0.30-0.35
 

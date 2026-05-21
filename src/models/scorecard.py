@@ -15,7 +15,13 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 from src.features.binning import WOEBinner
-from src.features.selection import correlation_filter, iv_filter, vif_filter
+from src.features.selection import (
+    adjacent_bin_merge_test,
+    correlation_filter,
+    iv_filter,
+    vif_filter,
+    woe_consistency_check,
+)
 from src.features.woe import WOETransformer
 
 
@@ -64,6 +70,8 @@ class Scorecard:
         self.lr_: Optional[LogisticRegression] = None
         self.final_features_: List[str] = []
         self.iv_: pd.Series = None
+        self.merge_test_results_: Optional[pd.DataFrame] = None
+        self.woe_consistency_results_: Optional[pd.DataFrame] = None
         self.scorecard_table_: Optional[pd.DataFrame] = None
         self.coef_: pd.Series = None
         self.intercept_: float = 0.0
@@ -80,12 +88,12 @@ class Scorecard:
         1. Feature list preparation (exclude non-features, grade/sub_grade)
         2. WOE binning on train set
         3. IV filtering
-        4. WOE transformation
-        5. VIF + correlation filtering
-        6. Logistic regression
-        7. Score scaling
+        4. Adjacent-bin chi-square merge test
+        5. WOE transformation + train/val consistency check
+        6. VIF + correlation filtering
+        7. Logistic regression
+        8. Score scaling
         """
-        del val_df  # reserved for future stepwise / early-stopping
 
         df = train_df.copy()
 
@@ -134,9 +142,41 @@ class Scorecard:
         self.binner_.iv_ = self.binner_.iv_[keep_iv]
         self.iv_ = self.binner_.iv_.copy()  # store on self for feature importance
 
+        # 3b. Adjacent-bin chi-square merge test
+        merge_df = adjacent_bin_merge_test(self.binner_, alpha=0.05)
+        self.merge_test_results_ = merge_df
+        n_merge = merge_df["should_merge"].sum() if len(merge_df) > 0 else 0
+        if n_merge > 0:
+            flagged = merge_df[merge_df["should_merge"]]["feature"].unique()
+            print(f"Adjacent-bin merge test: {n_merge} bin pairs flagged in {len(flagged)} features")
+            for f in flagged[:3]:
+                pairs = merge_df[merge_df["feature"] == f]
+                for _, row in pairs[pairs["should_merge"]].head(2).iterrows():
+                    print(f"  {f}: p={row['p_value']:.3f}  {row['bin_pair']}")
+        else:
+            print("Adjacent-bin merge test: all adjacent bins significantly different (OK)")
+
         # 4. WOE transformation
         self.transformer_ = WOETransformer(self.binner_)
         woe_train = self.transformer_.fit_transform(df, target=target)
+
+        # 4b. WOE consistency check (train vs val)
+        if val_df is not None:
+            consistency_df = woe_consistency_check(
+                self.binner_, df, val_df, target=target
+            )
+            self.woe_consistency_results_ = consistency_df
+            n_unstable = (~consistency_df["stable"]).sum() if len(consistency_df) > 0 else 0
+            if n_unstable > 0:
+                unstable = consistency_df[~consistency_df["stable"]]
+                print(f"WOE consistency check: {n_unstable} features unstable (train vs val)")
+                for _, row in unstable.head(5).iterrows():
+                    reason = "low corr" if row["woe_correlation"] < 0.9 else "sign flip"
+                    print(f"  {row['feature']}: corr={row['woe_correlation']:.3f} ({reason})")
+            else:
+                print("WOE consistency check: all features stable (OK)")
+        else:
+            print("WOE consistency check: skipped (no val_df provided)")
 
         # Drop target from woe for VIF check
         woe_features = woe_train.drop(columns=target)
@@ -276,7 +316,7 @@ class Scorecard:
                 "importance": abs(beta) * iv,
             })
         df = pd.DataFrame(importance)
-        df = df.sort_values("importance", ascending=False)
+        df = df.sort_values("importance", ascending=False).reset_index(drop=True)
         return df
 
     def save(self, path: str | Path):

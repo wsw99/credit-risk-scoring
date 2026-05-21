@@ -159,3 +159,63 @@ def apply_temporal_split(
     CLEANING_STATS["total_removed"] = total_removed
 
     return train, val, test
+
+
+def drop_split_useless_columns(
+    train: pd.DataFrame,
+    val: pd.DataFrame,
+    test: pd.DataFrame,
+    nan_threshold: float = 0.8,
+    constant_threshold: float = 0.99,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Drop columns that are near-useless in *any* of the three splits.
+
+    Phase 1 (global) drop_high_missingness catches columns with >80% NaN on the
+    full dataset.  But a column could have e.g. 73% NaN globally yet be 100% NaN
+    in train (field added after 2014).  This pass checks each split individually
+    and removes any column that exceeds the threshold in any split.
+
+    Parameters
+    ----------
+    nan_threshold : float
+        Drop if NaN rate >= this in *any* split (default 0.8, matching global).
+    constant_threshold : float
+        Drop if the most frequent single value accounts for >= this fraction.
+    """
+    splits = {"train": train, "val": val, "test": test}
+
+    # --- NaN check per split ---
+    nan_drop: set = set()
+    for name, part in splits.items():
+        rate = part.isnull().mean()
+        bad = rate[rate >= nan_threshold].index.tolist()
+        if bad:
+            CLEANING_STATS[f"split_nan_{name}"] = bad
+        nan_drop.update(bad)
+
+    # --- Near-constant check per split ---
+    constant_drop: set = set()
+    for name, part in splits.items():
+        for col in part.columns:
+            if col in nan_drop or col in constant_drop:
+                continue
+            try:
+                dominant = part[col].value_counts(normalize=True, dropna=False).iloc[0]
+                if dominant >= constant_threshold:
+                    constant_drop.add(col)
+                    CLEANING_STATS.setdefault(f"split_constant_{name}", []).append(col)
+            except Exception:
+                pass
+
+    drop = sorted(nan_drop | constant_drop)
+
+    CLEANING_STATS["split_useless_cols_dropped"] = len(drop)
+    CLEANING_STATS["split_useless_cols"] = drop
+    CLEANING_STATS["split_useless_nan"] = sorted(nan_drop)
+    CLEANING_STATS["split_useless_constant"] = sorted(constant_drop)
+
+    return (
+        train.drop(columns=drop, errors="ignore"),
+        val.drop(columns=drop, errors="ignore"),
+        test.drop(columns=drop, errors="ignore"),
+    )

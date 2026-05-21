@@ -80,11 +80,12 @@ class WOEBinner:
             and df[f].dtype in ("int64", "float64", "int32", "float32")
         ]
 
-        self.features_ = numeric_features + categorical_features
+        candidate_features = numeric_features + categorical_features
         iv_values = {}
         all_tables = []
+        self._failed_features = {}
 
-        for feat in self.features_:
+        for feat in candidate_features:
             dtype = "categorical" if feat in categorical_features else "numerical"
             x = df[feat].values
             y = df[target].values
@@ -108,8 +109,8 @@ class WOEBinner:
                     table = optb.binning_table.build()
                     table["Feature"] = feat
                     all_tables.append(table)
-                except Exception:
-                    # Fall back to fewer bins
+                except Exception as e1:
+                    # Fall back to fewer bins, relaxed constraints
                     try:
                         optb = OptimalBinning(
                             name=feat,
@@ -124,11 +125,18 @@ class WOEBinner:
                         table = optb.binning_table.build()
                         table["Feature"] = feat
                         all_tables.append(table)
-                    except Exception:
-                        pass
+                    except Exception as e2:
+                        self._failed_features[feat] = str(e2)
 
+        self.features_ = list(self._binners.keys())
         self.iv_ = pd.Series(iv_values).sort_values(ascending=False)
         self.binning_table_ = pd.concat(all_tables, ignore_index=True) if all_tables else pd.DataFrame()
+
+        if self._failed_features:
+            print(f"WOE binning: {len(self._failed_features)} features failed to bin:")
+            for f, err in self._failed_features.items():
+                print(f"  {f}: {err}")
+
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
