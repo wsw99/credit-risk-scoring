@@ -1,0 +1,7 @@
+Metric,Value,Interpretation
+Faithfulness Score,3.26x,Good
+Monotonicity (Spearman r),1.0000,Good
+Stability (Jaccard),1.0000,Good
+Stability (Rank Corr),1.0000,Good
+Comprehensibility,3/5,Good
+Top-10 SHAP Concentration,60.7%,Fair
